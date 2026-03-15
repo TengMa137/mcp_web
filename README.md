@@ -1,26 +1,33 @@
 # MCP Server - Modular Design with Structured Responses
 
-Clean, modular implementation with Pydantic models for structured tool responses.
+This is a **clean, modular implementation** with:
+-   Separate tools (not bundled together)
+-   Structured responses (Pydantic models)
+-   Type safety and validation
+-   Works across Docker containers (SSE transport)
+-   Uses official MCP SDK
+-   Easy to extend
+-   Not over-engineered
 
 ## Key Features
 
-✅ **Separate Tools**: Each tool is independent and focused
+  **Separate Tools**: Each tool is independent and focused
 - `search_web` - Web search with DuckDuckGo
 - `crawl_url` - Single URL crawling
 - `crawl_urls` - Batch URL crawling
 
-✅ **Structured Responses**: All responses use Pydantic models
+  **Structured Responses**: All responses use Pydantic models
 - Type-safe and validated
 - Easy to parse and use
 - JSON serializable
 
-✅ **Modular Code**: Clean separation of concerns
+  **Modular Code**: Clean separation of concerns
 - `models.py` - Pydantic response models
 - `tools/search_tool.py` - Web search implementation
 - `tools/crawler_tool.py` - Crawler implementation
 - `server.py` - MCP server with SSE transport
 
-✅ **No Over-Engineering**: Simple, straightforward design
+  **No Over-Engineering**: Simple, straightforward design
 
 ## Project Structure
 
@@ -302,22 +309,22 @@ async def search_and_process():
 
 ## Why This Design?
 
-### ✅ Modularity
+###   Modularity
 - Each tool is independent
 - Easy to add new tools
 - Easy to test individually
 
-### ✅ Structured Data
+###   Structured Data
 - Pydantic models ensure type safety
 - Easy to validate and parse
 - Self-documenting with types
 
-### ✅ Clear Separation
+###   Clear Separation
 - Models define data structures
 - Tools implement business logic
 - Server orchestrates tools
 
-### ✅ Not Over-Engineered
+###   Not Over-Engineered
 - Simple file structure
 - No complex abstractions
 - Easy to understand and modify
@@ -405,28 +412,3 @@ import logging
 logger = logging.getLogger(__name__)
 logger.info(f"Processing {len(urls)} URLs")
 ```
-
-## Comparison with Previous Implementations
-
-| Feature | This (Modular) | Previous (SSE) | Original (WebSocket) |
-|---------|----------------|----------------|----------------------|
-| Tool separation | ✅ Separate files | ❌ All in one | ❌ All in one |
-| Response format | ✅ Pydantic models | ❌ Plain text | ❌ Plain dict |
-| Type safety | ✅ Full | ⚠️ Partial | ❌ None |
-| Extensibility | ✅ Easy | ⚠️ Medium | ⚠️ Medium |
-| Code organization | ✅ Clean | ⚠️ Okay | ⚠️ Okay |
-| MCP SDK | ✅ Yes (SSE) | ✅ Yes (SSE) | ❌ Manual |
-| Cross-container | ✅ Yes | ✅ Yes | ✅ Yes |
-
-## Summary
-
-This is a **clean, modular implementation** with:
-- ✅ Separate tools (not bundled together)
-- ✅ Structured responses (Pydantic models)
-- ✅ Type safety and validation
-- ✅ Works across Docker containers (SSE transport)
-- ✅ Uses official MCP SDK
-- ✅ Easy to extend
-- ✅ Not over-engineered
-
-**This is the recommended approach for your use case.**
