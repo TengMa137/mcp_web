@@ -1,0 +1,40 @@
+services:
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mcp-server
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - mcp-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  mcp-client:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mcp-client
+    depends_on:
+      mcp-server:
+        condition: service_healthy
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MCP_SERVER_URL=http://mcp-server:8000/sse
+    networks:
+      - mcp-network
+    command: python client.py --interactive
+    stdin_open: true
+    tty: true
+
+networks:
+  mcp-network:
+    driver: bridge
