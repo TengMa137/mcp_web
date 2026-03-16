@@ -26,9 +26,7 @@ class CrawledContent(BaseModel):
     url: str
     success: bool
     title: Optional[str] = None
-    markdown: Optional[str] = None
     text: Optional[str] = None
-    html: Optional[str] = None
     links: Dict[str, List[Dict]] = Field(default_factory=dict)
     error: Optional[str] = None
 

@@ -3,9 +3,12 @@
 import asyncio
 from typing import List
 import logging
-from crawl4ai import AsyncWebCrawler
 
 from models import CrawledContent, CrawlResponse, BatchCrawlResponse
+
+from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
+from crawl4ai.content_filter_strategy import PruningContentFilter
+from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -68,51 +71,50 @@ class CrawlerTool:
             failed=failed
         )
     
+
     async def _fetch_url(self, url: str) -> CrawledContent:
-        """Fetch and extract content from a URL.
-        
-        Args:
-            url: URL to fetch
-            
-        Returns:
-            CrawledContent with structured data
-        """
         try:
+            config = CrawlerRunConfig(
+                word_count_threshold=1000,
+                excluded_tags=["nav", "header", "footer", "aside", "script", "style"],
+                exclude_external_links=True,
+                remove_overlay_elements=True,
+                markdown_generator=DefaultMarkdownGenerator(
+                    content_filter=PruningContentFilter(
+                        threshold=0.45,
+                        threshold_type="dynamic",  # adapts per page, better than fixed
+                        min_word_threshold=5,
+                    ),
+                    options={"ignore_links": True, "ignore_images": True},
+                ),
+            )
+
             async with AsyncWebCrawler(verbose=False) as crawler:
-                result = await crawler.arun(
-                    url=url,
-                    word_count_threshold=10,
-                    timeout=self.timeout
-                )
-                
-                if not result.success:
-                    return CrawledContent(
-                        url=url,
-                        success=False,
-                        error=result.error_message or "Unknown error"
-                    )
-                
+                result = await crawler.arun(url=url, config=config)
+
+            if not result.success:
                 return CrawledContent(
                     url=url,
-                    success=True,
-                    title=result.metadata.get("title", "") if result.metadata else "",
-                    markdown=result.markdown or "",
-                    text=result.extracted_content or "",
-                    html=result.html or "",
-                    links=result.links
+                    success=False,
+                    error=result.error_message or "Unknown error"
                 )
-                
-        except asyncio.TimeoutError:
-            logger.error(f"Timeout crawling {url}")
+
+            md = result.markdown
+            text = ""
+            if md:
+                # fit_markdown is populated because we passed a PruningContentFilter
+                text = md.fit_markdown or md.raw_markdown or ""
+
             return CrawledContent(
                 url=url,
-                success=False,
-                error="Request timeout"
+                success=True,
+                title=result.metadata.get("title", "") if result.metadata else "",
+                text=text,
             )
+
+        except asyncio.TimeoutError:
+            return CrawledContent(url=url, success=False, error="Request timeout")
         except Exception as e:
             logger.error(f"Error crawling {url}: {e}")
-            return CrawledContent(
-                url=url,
-                success=False,
-                error=str(e)
-            )
+            return CrawledContent(url=url, success=False, error=str(e))
+        
