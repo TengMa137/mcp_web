@@ -17,10 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN playwright install chromium || true
 
 # Copy application code
-COPY models.py .
-COPY tools/ ./tools/
-COPY server.py .
-COPY client.py .
+COPY . .
 
 ENV PYTHONUNBUFFERED=1
 

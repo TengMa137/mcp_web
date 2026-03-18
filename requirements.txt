@@ -7,11 +7,10 @@ ddgs>=4.0.0
 # Web crawler
 crawl4ai>=0.3.0
 
-# Structured data
-pydantic>=2.0.0
-
-# Async HTTP
-httpx>=0.25.0
-
 # arXiv parsing
 feedparser>=6.0.10
+
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+httpx>=0.25.0

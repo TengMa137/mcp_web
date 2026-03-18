@@ -34,6 +34,7 @@ This is a **clean, modular implementation** with:
 ```
 mcp/
 ├── models.py              # Pydantic models for responses
+├── config/                # Pydantic settings
 ├── tools/
 │   ├── search_tool.py     # WebSearchTool
 │   ├── crawler_tool.py    # CrawlerTool
@@ -103,6 +104,10 @@ mcp/
 
 ## Quick Start
 
+First set up the environment variables, modify .env as needed:
+```bash
+cp env.example .env
+```
 ### Option 1: Docker (Recommended)
 
 ```bash

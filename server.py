@@ -10,18 +10,20 @@ from mcp.server.fastmcp import FastMCP
 
 from tools import WebSearchTool, CrawlerTool, ArxivTool
 
-logging.basicConfig(level=logging.INFO)
+from config import settings
+
+# Configure logging
+logging.basicConfig(
+    level=getattr(logging, settings.log_level),
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
-
-
-# Use Docker-safe port
-PORT = int(os.environ.get("PORT", 8000))
 
 # Initialize FastMCP
 mcp = FastMCP(
     "mcp-web-server",
-    host="0.0.0.0",
-    port=PORT,
+    host=settings.host,
+    port=settings.port,
 )
 
 @mcp.custom_route("/health", methods=["GET"])
@@ -30,9 +32,14 @@ async def health(request: Request):
 
 # Initialize tools
 logger.info("Initializing tools...")
-search_tool = WebSearchTool(max_results=10, timeout=30)
-crawler_tool = CrawlerTool(timeout=60)
-arxiv_tool = ArxivTool(max_results=10)
+search_tool = WebSearchTool(max_results=settings.max_search_results, timeout=settings.search_timeout)
+crawler_tool = CrawlerTool(
+    timeout=settings.crawler_timeout, 
+    word_count_threshold=settings.crawler_word_count_threshold,
+    exclude_external_links=settings.crawler_exclude_external_links,
+    remove_overlay_elements=settings.crawler_remove_overlay_elements,
+)
+arxiv_tool = ArxivTool(max_results=settings.max_arxiv_search_results, timeout=settings.arxiv_search_timeout)
 logger.info("Tools initialized.")
 
 
@@ -52,9 +59,9 @@ If you already have relevant URLs, call crawl_url instead.
 )
 async def search_web(
     query: Annotated[str, "Search query describing the information needed"],
-    max_results: Annotated[int, "Maximum number of results to return"] = 10,
+    # max_results: Annotated[int, "Maximum number of results to return"] = 10,
 ) -> str:
-    result = await search_tool.search(query=query, max_results=max_results)
+    result = await search_tool.search(query=query)
     return result.model_dump_json(indent=2)
 
 
@@ -107,7 +114,6 @@ async def search_arxiv(
     category: Annotated[str, "Optional arXiv category filter"] = None,
     start_date: Annotated[str, "Earliest publication date (ISO format)"] = None,
     end_date: Annotated[str, "Latest publication date (ISO format)"] = None,
-    max_results: Annotated[int, "Maximum number of papers"] = 10,
 ) -> str:
     start_dt = datetime.fromisoformat(start_date) if start_date else None
     end_dt = datetime.fromisoformat(end_date) if end_date else None
@@ -136,5 +142,5 @@ async def fetch_arxiv(
 
 
 if __name__ == "__main__":
-    logger.info(f"Starting MCP server on 0.0.0.0:{PORT}")
+    logger.info(f"Starting MCP server on {settings.host}:{settings.port}")
     mcp.run(transport="sse")

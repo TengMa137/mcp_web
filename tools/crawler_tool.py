@@ -16,8 +16,28 @@ logger = logging.getLogger(__name__)
 class CrawlerTool:
     """Tool for crawling web pages."""
     
-    def __init__(self, timeout: int = 60):
+    def __init__(
+        self, 
+        timeout: int = 60,
+        word_count_threshold: int = 1000,
+        exclude_external_links: bool = True,
+        remove_overlay_elements: bool = True,
+    ):
         self.timeout = timeout
+        self.config = CrawlerRunConfig(
+                word_count_threshold=word_count_threshold,
+                excluded_tags=["nav", "header", "footer", "aside", "script", "style"],
+                exclude_external_links=exclude_external_links,
+                remove_overlay_elements=remove_overlay_elements,
+                markdown_generator=DefaultMarkdownGenerator(
+                    content_filter=PruningContentFilter(
+                        threshold=0.45,
+                        threshold_type="dynamic",  # adapts per page, better than fixed
+                        min_word_threshold=5,
+                    ),
+                    options={"ignore_links": True, "ignore_images": True},
+                ),
+            )
     
     async def crawl_url(self, url: str) -> CrawlResponse:
         """Crawl a single URL and return structured content.
@@ -74,20 +94,7 @@ class CrawlerTool:
 
     async def _fetch_url(self, url: str) -> CrawledContent:
         try:
-            config = CrawlerRunConfig(
-                word_count_threshold=1000,
-                excluded_tags=["nav", "header", "footer", "aside", "script", "style"],
-                exclude_external_links=True,
-                remove_overlay_elements=True,
-                markdown_generator=DefaultMarkdownGenerator(
-                    content_filter=PruningContentFilter(
-                        threshold=0.45,
-                        threshold_type="dynamic",  # adapts per page, better than fixed
-                        min_word_threshold=5,
-                    ),
-                    options={"ignore_links": True, "ignore_images": True},
-                ),
-            )
+            config = self.config
 
             async with AsyncWebCrawler(verbose=False) as crawler:
                 result = await crawler.arun(url=url, config=config)
