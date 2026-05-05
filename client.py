@@ -16,6 +16,17 @@ import os
 
 server_url = os.getenv("MCP_SERVER_URL", "http://localhost:8000/sse")
 
+
+def parse_tool_json(result):
+    text = result.content[0].text if result.content else ""
+    if result.isError:
+        raise RuntimeError(text or "Tool execution failed")
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Tool returned non-JSON output: {text}") from exc
+
+
 async def demo_search():
     """Demo search tool with structured response."""    
     async with sse_client(server_url) as (read, write):
@@ -34,7 +45,7 @@ async def demo_search():
             })
             
             # Parse structured response
-            response_json = json.loads(result.content[0].text)
+            response_json = parse_tool_json(result)
             search_response = WebSearchResponse(**response_json)
             
             print(f"\nQuery: {search_response.query}")
@@ -63,7 +74,7 @@ async def demo_crawl():
             })
             
             # Parse structured response
-            response_json = json.loads(result.content[0].text)
+            response_json = parse_tool_json(result)
             crawl_response = CrawlResponse(**response_json)
             
             print(f"\nURL: {crawl_response.url}")
@@ -73,7 +84,8 @@ async def demo_crawl():
                 print(f"Title: {crawl_response.content.title}")
                 print(f"Links found: {len(crawl_response.content.links)}")
                 print(f"\nMarkdown preview:")
-                print(crawl_response.content.markdown[:500])
+                content = getattr(crawl_response.content, "markdown", None) or crawl_response.content.text or ""
+                print(content[:500])
                 print("\n...")
             else:
                 print(f"Error: {crawl_response.content.error}")
@@ -97,7 +109,7 @@ async def demo_batch_crawl():
             })
             
             # Parse structured response
-            response_json = json.loads(result.content[0].text)
+            response_json = parse_tool_json(result)
             batch_response = BatchCrawlResponse(**response_json)
             
             print(f"\nTotal URLs: {len(batch_response.urls)}")
@@ -132,7 +144,7 @@ async def demo_arxiv_search():
                 "max_results": 5
             })
             
-            response_json = json.loads(result.content[0].text)
+            response_json = parse_tool_json(result)
             arxiv_response = ArxivSearchResponse(**response_json)
             
             print(f"\nQuery: {arxiv_response.query}")
@@ -167,7 +179,7 @@ async def demo_arxiv_fetch():
                 "arxiv_id": arxiv_id
             })
 
-            response_json = json.loads(result.content[0].text)
+            response_json = parse_tool_json(result)
             fetch_response = ArxivFetchResponse(**response_json)
 
             if fetch_response.found:
@@ -213,8 +225,13 @@ async def interactive_mode():
                         "query": query,
                         "max_results": int(max_results)
                     })
-                    
-                    response_json = json.loads(result.content[0].text)
+
+                    try:
+                        response_json = parse_tool_json(result)
+                    except RuntimeError as exc:
+                        print(f"\nSearch failed: {exc}")
+                        continue
+
                     search_response = WebSearchResponse(**response_json)
                     
                     print(f"\nFound {search_response.total_results} results:\n")
@@ -229,8 +246,13 @@ async def interactive_mode():
                     result = await session.call_tool("crawl_url", {
                         "url": url
                     })
-                    
-                    response_json = json.loads(result.content[0].text)
+
+                    try:
+                        response_json = parse_tool_json(result)
+                    except RuntimeError as exc:
+                        print(f"\nCrawl failed: {exc}")
+                        continue
+
                     crawl_response = CrawlResponse(**response_json)
                     
                     if crawl_response.content.success:
@@ -242,7 +264,8 @@ async def interactive_mode():
                         show_content = input("\nShow content? (y/n): ").strip().lower()
                         if show_content == "y":
                             print("\nMarkdown:")
-                            print(crawl_response.content.markdown[:1000])
+                            content = getattr(crawl_response.content, "markdown", None) or crawl_response.content.text or ""
+                            print(content[:1000])
                             print("\n...")
                     else:
                         print(f"\n❌ Failed: {crawl_response.content.error}")
@@ -254,8 +277,13 @@ async def interactive_mode():
                     result = await session.call_tool("crawl_urls", {
                         "urls": urls
                     })
-                    
-                    response_json = json.loads(result.content[0].text)
+
+                    try:
+                        response_json = parse_tool_json(result)
+                    except RuntimeError as exc:
+                        print(f"\nBatch crawl failed: {exc}")
+                        continue
+
                     batch_response = BatchCrawlResponse(**response_json)
                     
                     print(f"\n✅ Successful: {batch_response.successful}")
@@ -283,13 +311,17 @@ async def interactive_mode():
                         payload["category"] = category
 
                     result = await session.call_tool("search_arxiv", payload)
-                    # print(result)
-                    if result.isError:
-                        print(result.content[0].text)
-                        raise RuntimeError("Tool execution failed")
+                    try:
+                        response_json = parse_tool_json(result)
+                    except RuntimeError as exc:
+                        print(f"\nSearch failed: {exc}")
+                        continue
 
-                    response_json = json.loads(result.content[0].text)
                     arxiv_response = ArxivSearchResponse(**response_json)
+
+                    if not arxiv_response.success:
+                        print(f"\nSearch failed: {arxiv_response.error}")
+                        continue
 
                     print(f"\nFound {arxiv_response.total_results} papers:\n")
                     for paper in arxiv_response.results:
@@ -304,8 +336,17 @@ async def interactive_mode():
                         "arxiv_id": arxiv_id
                     })
 
-                    response_json = json.loads(result.content[0].text)
+                    try:
+                        response_json = parse_tool_json(result)
+                    except RuntimeError as exc:
+                        print(f"\nFetch failed: {exc}")
+                        continue
+
                     fetch_response = ArxivFetchResponse(**response_json)
+
+                    if not fetch_response.success:
+                        print(f"\nFetch failed: {fetch_response.error}")
+                        continue
 
                     if fetch_response.found:
                         paper = fetch_response.paper
@@ -329,7 +370,7 @@ async def main():
         await demo_crawl()
         await demo_batch_crawl()
         await demo_arxiv_search()
-        await demo_arxiv_fetch
+        await demo_arxiv_fetch()
 
 
 if __name__ == "__main__":

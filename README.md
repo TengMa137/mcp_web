@@ -15,6 +15,7 @@ This is a **clean, modular implementation** with:
 - `search_web` - Web search with DuckDuckGo
 - `crawl_url` - Single URL crawling
 - `crawl_urls` - Batch URL crawling
+- `search_arxiv` / `fetch_arxiv` - arXiv paper search and lookup
 
   **Structured Responses**: All responses use Pydantic models
 - Type-safe and validated
@@ -75,8 +76,7 @@ mcp/
     "title": "Example Domain",
     "markdown": "# Example Domain\n\n...",
     "text": "Example Domain...",
-    "html": "<html>...",
-    "links": ["https://..."],
+    "links": {"internal": [], "external": []},
     "error": null
   },
   "timestamp": "2024-..."
@@ -276,7 +276,7 @@ async def search_and_process():
                 
                 if crawl_response.content.success:
                     print(f"\nContent from {top_url}:")
-                    print(crawl_response.content.markdown[:500])
+                    print((crawl_response.content.markdown or "")[:500])
 ```
 
 ## Tool Details
@@ -285,7 +285,7 @@ async def search_and_process():
 
 **Parameters:**
 - `query` (string, required): Search query
-- `max_results` (integer, optional): Max results (default: 10, max: 20)
+- `max_results` (integer, optional): Max results, capped by `MAX_SEARCH_RESULTS`
 
 **Returns:** `WebSearchResponse`
 - Structured list of search results
@@ -299,7 +299,7 @@ async def search_and_process():
 
 **Returns:** `CrawlResponse`
 - Structured content from URL
-- Includes title, markdown, text, HTML, links
+- Includes title, markdown, text, links
 - Success/error status
 
 ### crawl_urls
@@ -311,6 +311,25 @@ async def search_and_process():
 - Structured content for each URL
 - Success/failure counts
 - Individual results for each URL
+
+### search_arxiv
+
+**Parameters:**
+- `query` (string, required): Search query
+- `category` (string, optional): arXiv category such as `cs.LG`
+- `start_date` / `end_date` (string, optional): ISO date or datetime bounds
+- `max_results` (integer, optional): Max results, capped by `MAX_ARXIV_SEARCH_RESULTS`
+
+**Returns:** `ArxivSearchResponse`
+- Paper metadata including title, authors, abstract, categories, dates, and PDF URL
+
+### fetch_arxiv
+
+**Parameters:**
+- `arxiv_id` (string, required): arXiv ID such as `2301.00001`
+
+**Returns:** `ArxivFetchResponse`
+- Full paper metadata when found
 
 ## Why This Design?
 
@@ -357,21 +376,10 @@ class MyTool:
 ```python
 my_tool = MyTool()
 
-@server.list_tools()
-async def handle_list_tools():
-    return [
-        types.Tool(name="my_tool", ...),
-        # ... other tools
-    ]
-
-@server.call_tool()
-async def handle_call_tool(name, arguments):
-    if name == "my_tool":
-        result = await my_tool.execute(arguments["param"])
-        return [types.TextContent(
-            type="text",
-            text=result.model_dump_json(indent=2)
-        )]
+@mcp.tool(description="Run my tool.")
+async def my_tool_endpoint(param: str) -> str:
+    result = await my_tool.execute(param)
+    return result.model_dump_json(indent=2)
 ```
 
 Done! Your new tool is ready.

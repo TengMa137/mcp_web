@@ -1,7 +1,6 @@
-import os
 import logging
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Optional
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -14,7 +13,7 @@ from config import settings
 
 # Configure logging
 logging.basicConfig(
-    level=getattr(logging, settings.log_level),
+    level=getattr(logging, settings.log_level.upper(), logging.INFO),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
@@ -34,12 +33,19 @@ async def health(request: Request):
 logger.info("Initializing tools...")
 search_tool = WebSearchTool(max_results=settings.max_search_results, timeout=settings.search_timeout)
 crawler_tool = CrawlerTool(
-    timeout=settings.crawler_timeout, 
+    timeout=settings.crawler_timeout,
+    max_batch_urls=settings.crawler_max_batch_urls,
+    max_concurrency=settings.crawler_max_concurrency,
     word_count_threshold=settings.crawler_word_count_threshold,
     exclude_external_links=settings.crawler_exclude_external_links,
     remove_overlay_elements=settings.crawler_remove_overlay_elements,
+    allow_private_hosts=settings.crawler_allow_private_hosts,
 )
-arxiv_tool = ArxivTool(max_results=settings.max_arxiv_search_results, timeout=settings.arxiv_search_timeout)
+arxiv_tool = ArxivTool(
+    max_results=settings.max_arxiv_search_results,
+    timeout=settings.arxiv_search_timeout,
+    min_request_interval=settings.arxiv_min_request_interval,
+)
 logger.info("Tools initialized.")
 
 
@@ -59,9 +65,12 @@ If you already have relevant URLs, call crawl_url instead.
 )
 async def search_web(
     query: Annotated[str, "Search query describing the information needed"],
-    # max_results: Annotated[int, "Maximum number of results to return"] = 10,
+    max_results: Annotated[Optional[int], "Maximum number of results to return"] = None,
 ) -> str:
-    result = await search_tool.search(query=query)
+    result = await search_tool.search(
+        query=query,
+        max_results=_bounded_max_results(max_results, settings.max_search_results),
+    )
     return result.model_dump_json(indent=2)
 
 
@@ -111,9 +120,10 @@ Returns metadata including title, authors, abstract, and arXiv ID.
 )
 async def search_arxiv(
     query: Annotated[str, "Search query for academic papers"],
-    category: Annotated[str, "Optional arXiv category filter"] = None,
-    start_date: Annotated[str, "Earliest publication date (ISO format)"] = None,
-    end_date: Annotated[str, "Latest publication date (ISO format)"] = None,
+    category: Annotated[Optional[str], "Optional arXiv category filter"] = None,
+    start_date: Annotated[Optional[str], "Earliest publication date (ISO format)"] = None,
+    end_date: Annotated[Optional[str], "Latest publication date (ISO format)"] = None,
+    max_results: Annotated[Optional[int], "Maximum number of results to return"] = None,
 ) -> str:
     start_dt = datetime.fromisoformat(start_date) if start_date else None
     end_dt = datetime.fromisoformat(end_date) if end_date else None
@@ -123,6 +133,7 @@ async def search_arxiv(
         category=category,
         start_date=start_dt,
         end_date=end_dt,
+        max_results=_bounded_max_results(max_results, settings.max_arxiv_search_results),
     )
     return result.model_dump_json(indent=2)
 
@@ -139,6 +150,14 @@ async def fetch_arxiv(
 ) -> str:
     result = await arxiv_tool.fetch(arxiv_id=arxiv_id)
     return result.model_dump_json(indent=2)
+
+
+def _bounded_max_results(value: Optional[int], default: int) -> int:
+    if value is None:
+        return default
+    if value < 1:
+        raise ValueError("max_results must be at least 1")
+    return min(value, default)
 
 
 if __name__ == "__main__":

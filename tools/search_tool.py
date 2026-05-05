@@ -30,12 +30,15 @@ class WebSearchTool:
         max_results = max_results or self.max_results
         
         try:
-            loop = asyncio.get_event_loop()
-            results = await loop.run_in_executor(
-                None,
-                self._search_sync,
-                query,
-                max_results
+            loop = asyncio.get_running_loop()
+            results = await asyncio.wait_for(
+                loop.run_in_executor(
+                    None,
+                    self._search_sync,
+                    query,
+                    max_results,
+                ),
+                timeout=self.timeout,
             )
             
             search_results = [

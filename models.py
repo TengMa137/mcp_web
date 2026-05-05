@@ -26,6 +26,7 @@ class CrawledContent(BaseModel):
     url: str
     success: bool
     title: Optional[str] = None
+    markdown: Optional[str] = None
     text: Optional[str] = None
     links: Dict[str, List[Dict]] = Field(default_factory=dict)
     error: Optional[str] = None
@@ -73,6 +74,8 @@ class ArxivSearchResponse(BaseModel):
     end_date: Optional[datetime] = None
     results: List[ArxivPaper]
     total_results: int
+    success: bool = True
+    error: Optional[str] = None
     timestamp: datetime = Field(default_factory=datetime.now)
 
 
@@ -81,4 +84,6 @@ class ArxivFetchResponse(BaseModel):
     arxiv_id: str
     paper: Optional[ArxivPaper] = None
     found: bool
+    success: bool = True
+    error: Optional[str] = None
     timestamp: datetime = Field(default_factory=datetime.now)
