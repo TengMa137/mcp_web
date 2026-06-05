@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime
 from typing import Annotated, Optional
 
 from starlette.requests import Request
@@ -42,8 +41,7 @@ crawler_tool = CrawlerTool(
     allow_private_hosts=settings.crawler_allow_private_hosts,
 )
 arxiv_tool = ArxivTool(
-    max_results=settings.max_arxiv_search_results,
-    timeout=settings.arxiv_search_timeout,
+    timeout=settings.arxiv_fetch_timeout,
     min_request_interval=settings.arxiv_min_request_interval,
 )
 logger.info("Tools initialized.")
@@ -109,44 +107,13 @@ async def crawl_urls(
 
 @mcp.tool(
     description="""
-Search the arXiv academic paper database.
+Retrieve the full metadata and abstract of a specific arXiv paper by ID.
 
-Use this tool when:
-• the topic involves scientific or technical research
-• academic papers may provide authoritative information
-
-Returns metadata including title, authors, abstract, and arXiv ID.
-"""
-)
-async def search_arxiv(
-    query: Annotated[str, "Search query for academic papers"],
-    category: Annotated[Optional[str], "Optional arXiv category filter"] = None,
-    start_date: Annotated[Optional[str], "Earliest publication date (ISO format)"] = None,
-    end_date: Annotated[Optional[str], "Latest publication date (ISO format)"] = None,
-    max_results: Annotated[Optional[int], "Maximum number of results to return"] = None,
-) -> str:
-    start_dt = datetime.fromisoformat(start_date) if start_date else None
-    end_dt = datetime.fromisoformat(end_date) if end_date else None
-
-    result = await arxiv_tool.search(
-        query=query,
-        category=category,
-        start_date=start_dt,
-        end_date=end_dt,
-        max_results=_bounded_max_results(max_results, settings.max_arxiv_search_results),
-    )
-    return result.model_dump_json(indent=2)
-
-
-@mcp.tool(
-    description="""
-Retrieve the full metadata and abstract of a specific arXiv paper.
-
-Use this after search_arxiv when you want detailed information about a paper.
+Use normal web search scoped to arxiv.org/abs to discover paper IDs, then call this tool.
 """
 )
 async def fetch_arxiv(
-    arxiv_id: Annotated[str, "The arXiv paper ID returned by search_arxiv"]
+    arxiv_id: Annotated[str, "The arXiv paper ID to fetch, e.g. 2605.06548"]
 ) -> str:
     result = await arxiv_tool.fetch(arxiv_id=arxiv_id)
     return result.model_dump_json(indent=2)

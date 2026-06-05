@@ -1,11 +1,29 @@
+x-mcp-web-image: &mcp-web-image
+  image: mcp-web:local
+  build:
+    context: .
+    dockerfile: Dockerfile
+
+x-mcp-web-security: &mcp-web-security
+  user: "10001:10001"
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  pids_limit: 256
+  mem_limit: 1g
+  cpus: 1.0
+  read_only: true
+  tmpfs:
+    - /tmp:size=512m,mode=1777
+    - /home/app/.cache:size=512m,mode=700,uid=10001,gid=10001
+  shm_size: "512mb"
+
 services:
   mcp-server:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: mcp-server
-    ports:
-      - "${PORT:-8000}:${PORT:-8000}"
+    <<: [*mcp-web-image, *mcp-web-security]
+    expose:
+      - "${PORT:-8000}"
     env_file:
       - .env
     environment:
@@ -20,26 +38,6 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
-
-  mcp-client:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: mcp-client
-    depends_on:
-      mcp-server:
-        condition: service_healthy
-    env_file:
-      - .env
-    environment:
-      - PYTHONUNBUFFERED=1
-      - PORT=${PORT:-8000}
-      - MCP_SERVER_URL=http://mcp-server:${PORT:-8000}/sse
-    networks:
-      - mcp-network
-    command: python client.py --interactive
-    stdin_open: true
-    tty: true
 
 networks:
   mcp-network:

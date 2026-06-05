@@ -66,19 +66,6 @@ class ArxivPaper(BaseModel):
     updated: datetime
 
 
-class ArxivSearchResponse(BaseModel):
-    """Response from arxiv_search tool."""
-    query: str
-    category: Optional[str] = None
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
-    results: List[ArxivPaper]
-    total_results: int
-    success: bool = True
-    error: Optional[str] = None
-    timestamp: datetime = Field(default_factory=datetime.now)
-
-
 class ArxivFetchResponse(BaseModel):
     """Response from arxiv_fetch tool."""
     arxiv_id: str

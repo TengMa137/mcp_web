@@ -20,8 +20,7 @@ class Settings(BaseSettings):
     crawler_remove_overlay_elements: bool = True
     crawler_allow_private_hosts: bool = False
 
-    max_arxiv_search_results: int = 10
-    arxiv_search_timeout: int = 30
+    arxiv_fetch_timeout: int = 30
     arxiv_min_request_interval: float = 3.0
 
     allowed_origins: list[str] = Field(default_factory=list)
@@ -29,6 +28,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
+        extra="ignore",
     )
 
 
