@@ -74,3 +74,89 @@ class ArxivFetchResponse(BaseModel):
     success: bool = True
     error: Optional[str] = None
     timestamp: datetime = Field(default_factory=datetime.now)
+
+
+class ApiLocation(BaseModel):
+    """Resolved location returned by a public API."""
+    name: str
+    country: Optional[str] = None
+    admin1: Optional[str] = None
+    latitude: float
+    longitude: float
+    timezone: Optional[str] = None
+
+
+class WeatherDailyForecast(BaseModel):
+    """Daily weather forecast for one local date."""
+    date: str
+    weather_code: Optional[int] = None
+    weather_description: Optional[str] = None
+    temperature_min_c: Optional[float] = None
+    temperature_max_c: Optional[float] = None
+    precipitation_sum_mm: Optional[float] = None
+    precipitation_probability_max_percent: Optional[int] = None
+    wind_speed_max_kmh: Optional[float] = None
+
+
+class WeatherHourlyForecast(BaseModel):
+    """Hourly weather forecast point."""
+    time: str
+    weather_code: Optional[int] = None
+    weather_description: Optional[str] = None
+    temperature_c: Optional[float] = None
+    precipitation_mm: Optional[float] = None
+    precipitation_probability_percent: Optional[int] = None
+    wind_speed_kmh: Optional[float] = None
+
+
+class WeatherForecastResponse(BaseModel):
+    """Response from weather_forecast tool."""
+    query: str
+    date: str
+    location: Optional[ApiLocation] = None
+    daily: Optional[WeatherDailyForecast] = None
+    hourly: List[WeatherHourlyForecast] = Field(default_factory=list)
+    source: str = "Open-Meteo"
+    source_url: str = "https://open-meteo.com/"
+    success: bool = True
+    error: Optional[str] = None
+    timestamp: datetime = Field(default_factory=datetime.now)
+
+
+class WikiSummaryResponse(BaseModel):
+    """Response from wiki_summary tool."""
+    query: str
+    language: str
+    title: Optional[str] = None
+    description: Optional[str] = None
+    extract: Optional[str] = None
+    page_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    source: str = "Wikipedia"
+    success: bool = True
+    error: Optional[str] = None
+    timestamp: datetime = Field(default_factory=datetime.now)
+
+
+class NewsArticle(BaseModel):
+    """Single news article result from a public news API."""
+    title: str
+    url: str
+    domain: Optional[str] = None
+    language: Optional[str] = None
+    source_country: Optional[str] = None
+    seen_at: Optional[str] = None
+    image_url: Optional[str] = None
+
+
+class NewsSearchResponse(BaseModel):
+    """Response from news_search tool."""
+    query: str
+    timespan: str
+    articles: List[NewsArticle]
+    total_results: int
+    source: str = "GDELT DOC 2.0"
+    source_url: str = "https://api.gdeltproject.org/api/v2/doc/doc"
+    success: bool = True
+    error: Optional[str] = None
+    timestamp: datetime = Field(default_factory=datetime.now)

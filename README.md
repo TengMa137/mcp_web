@@ -1,15 +1,27 @@
 # MCP Web Server
 
-Dockerized MCP server that exposes web search, webpage crawling, and arXiv fetch-by-ID over SSE.
+Dockerized MCP server that exposes free web/API tools over SSE.
 
 ## Tools
 
 - `search_web`: DuckDuckGo/DDGS web search with bounded result count.
+- `weather_forecast`: Open-Meteo forecast for a location and exact date.
+- `wiki_summary`: Wikipedia summary for definitions and stable entity overviews.
+- `news_search`: GDELT DOC 2.0 recent global news article search.
 - `crawl_url`: Crawl one known URL and return readable markdown/text.
 - `crawl_urls`: Crawl a bounded list of known URLs.
 - `fetch_arxiv`: Fetch arXiv metadata/abstract by exact arXiv ID.
 
 Paper discovery is intentionally done through `search_web`, for example with `site:arxiv.org/abs diffusion language model`, then `fetch_arxiv` is called with the selected ID.
+
+For common source-specific questions, prefer the API tools before generic search:
+
+- Weather: `weather_forecast`
+- Definitions and encyclopedic background: `wiki_summary`
+- News and politics/current-event discovery: `news_search`
+- Paper metadata after ID discovery: `fetch_arxiv`
+
+`source_catalog.yaml` lists these free preferred sources plus fallback domains for the local agent/router. It is declarative guidance, not hardcoded intent recognition.
 
 ## Docker Service
 
@@ -45,10 +57,14 @@ python server.py
 
 Environment variables are defined in `env.example`:
 
+- `API_USER_AGENT`
 - `MAX_SEARCH_RESULTS`, `SEARCH_TIMEOUT`
 - `CRAWLER_TIMEOUT`, `CRAWLER_MAX_BATCH_URLS`, `CRAWLER_MAX_CONCURRENCY`
 - `CRAWLER_WORD_COUNT_THRESHOLD`, `CRAWLER_EXCLUDE_EXTERNAL_LINKS`, `CRAWLER_REMOVE_OVERLAY_ELEMENTS`, `CRAWLER_ALLOW_PRIVATE_HOSTS`
 - `ARXIV_FETCH_TIMEOUT`, `ARXIV_MIN_REQUEST_INTERVAL`
+- `WEATHER_TIMEOUT`, `WEATHER_MAX_FORECAST_DAYS`
+- `WIKI_TIMEOUT`, `WIKI_DEFAULT_LANGUAGE`
+- `NEWS_TIMEOUT`, `NEWS_MAX_RESULTS`, `NEWS_DEFAULT_TIMESPAN`
 
 Keep `CRAWLER_ALLOW_PRIVATE_HOSTS=false` for production. The crawler blocks localhost, private IP literals, Docker host gateway names, and single-label internal service names by default.
 
@@ -57,6 +73,9 @@ Keep `CRAWLER_ALLOW_PRIVATE_HOSTS=false` for production. The crawler blocks loca
 Responses are JSON serialized Pydantic models from `models.py`:
 
 - `WebSearchResponse`
+- `WeatherForecastResponse`
+- `WikiSummaryResponse`
+- `NewsSearchResponse`
 - `CrawlResponse`
 - `BatchCrawlResponse`
 - `ArxivFetchResponse`

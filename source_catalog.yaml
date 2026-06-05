@@ -1,0 +1,50 @@
+sources:
+  weather:
+    preferred_tool: weather_forecast
+    provider: Open-Meteo
+    api_url: https://api.open-meteo.com/v1/forecast
+    fallback_domains:
+      - open-meteo.com
+      - weather.com
+      - timeanddate.com/weather
+      - accuweather.com
+
+  definitions:
+    preferred_tool: wiki_summary
+    provider: Wikipedia
+    api_url: https://www.wikipedia.org/
+    fallback_domains:
+      - wikipedia.org
+      - britannica.com
+
+  papers:
+    preferred_tool: fetch_arxiv
+    discovery_tool: search_web
+    discovery_domains:
+      - arxiv.org/abs
+      - openreview.net
+      - proceedings.mlr.press
+      - aclanthology.org
+      - semanticscholar.org
+
+  economics:
+    preferred_tool: search_web
+    free_api_candidates:
+      - https://api.worldbank.org/
+      - https://api.stlouisfed.org/fred/
+      - https://sdw-wsrest.ecb.europa.eu/
+    fallback_domains:
+      - worldbank.org
+      - fred.stlouisfed.org
+      - ecb.europa.eu
+      - oecd.org
+
+  news:
+    preferred_tool: news_search
+    provider: GDELT DOC 2.0
+    api_url: https://api.gdeltproject.org/api/v2/doc/doc
+    fallback_domains:
+      - reuters.com
+      - apnews.com
+      - bbc.com/news
+      - cnbc.com

@@ -6,7 +6,7 @@ from starlette.responses import JSONResponse
 
 from mcp.server.fastmcp import FastMCP
 
-from tools import WebSearchTool, CrawlerTool, ArxivTool
+from tools import ArxivTool, CrawlerTool, NewsTool, WeatherTool, WebSearchTool, WikiTool
 
 from config import settings
 
@@ -44,6 +44,22 @@ arxiv_tool = ArxivTool(
     timeout=settings.arxiv_fetch_timeout,
     min_request_interval=settings.arxiv_min_request_interval,
 )
+weather_tool = WeatherTool(
+    timeout=settings.weather_timeout,
+    max_forecast_days=settings.weather_max_forecast_days,
+    user_agent=settings.api_user_agent,
+)
+wiki_tool = WikiTool(
+    timeout=settings.wiki_timeout,
+    default_language=settings.wiki_default_language,
+    user_agent=settings.api_user_agent,
+)
+news_tool = NewsTool(
+    timeout=settings.news_timeout,
+    max_results=settings.news_max_results,
+    default_timespan=settings.news_default_timespan,
+    user_agent=settings.api_user_agent,
+)
 logger.info("Tools initialized.")
 
 
@@ -68,6 +84,67 @@ async def search_web(
     result = await search_tool.search(
         query=query,
         max_results=_bounded_max_results(max_results, settings.max_search_results),
+    )
+    return result.model_dump_json(indent=2)
+
+
+@mcp.tool(
+    description="""
+Get a weather forecast from the free Open-Meteo API.
+
+Use this before generic web search for weather questions such as current conditions,
+today, tomorrow, or an exact near-future date.
+
+Pass an exact ISO date as YYYY-MM-DD when the user asks a relative date.
+If date is omitted, the tool uses today's date in the resolved location timezone.
+"""
+)
+async def weather_forecast(
+    location: Annotated[str, "Location name, optionally with country or region"],
+    date: Annotated[Optional[str], "Forecast date as YYYY-MM-DD"] = None,
+) -> str:
+    result = await weather_tool.forecast(location=location, forecast_date=date)
+    return result.model_dump_json(indent=2)
+
+
+@mcp.tool(
+    description="""
+Get a concise encyclopedic overview from Wikipedia's free public APIs.
+
+Use this before generic web search for definitions, entity background, and stable
+overview questions. Do not use it for breaking news, prices, schedules, or facts
+that need current source verification.
+"""
+)
+async def wiki_summary(
+    query: Annotated[str, "Topic, concept, person, place, organization, or title"],
+    language: Annotated[Optional[str], "Wikipedia language code, defaults to server config"] = None,
+) -> str:
+    result = await wiki_tool.summary(query=query, language=language)
+    return result.model_dump_json(indent=2)
+
+
+@mcp.tool(
+    description="""
+Search recent global news articles through the free GDELT DOC 2.0 API.
+
+Use this before generic web search for news, politics, and current-event discovery.
+It returns article titles, URLs, domains, countries, languages, and seen dates.
+If those previews answer the question, do not crawl the articles.
+"""
+)
+async def news_search(
+    query: Annotated[str, "News query; GDELT supports quoted phrases and OR operators"],
+    max_results: Annotated[Optional[int], "Maximum number of articles to return"] = None,
+    timespan: Annotated[
+        Optional[str],
+        "Recent window such as 24h, 1day, 1week, or 1month",
+    ] = None,
+) -> str:
+    result = await news_tool.search(
+        query=query,
+        max_results=_bounded_max_results(max_results, settings.news_max_results),
+        timespan=timespan,
     )
     return result.model_dump_json(indent=2)
 
